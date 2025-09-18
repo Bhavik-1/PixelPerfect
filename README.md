@@ -1,11 +1,22 @@
-🖼️ PixelPerfect: AI Image Quality Analyzer
-PixelPerfect is a two-stage deep learning application designed to analyze the quality of an image. It first classifies an image as either "Good" or "Poor" quality. If the image is determined to be of poor quality, it then identifies the specific type of defect from a set of predefined categories.
+# 🖼️ PixelPerfect: AI Image Quality Analyzer
 
-The application is built using Python with the Streamlit framework for the user interface and TensorFlow/Keras for the machine learning models.
+**PixelPerfect** is a two-stage deep learning application designed to analyze the quality of an image.  
 
-🚀 How to Run the App
-1. Project Structure
+- **Stage 1:** Classifies an image as either **"Good"** or **"Poor"** quality.  
+- **Stage 2:** If the image is "Poor," it identifies the **specific type of defect** from a set of predefined categories.  
+
+The application is built using **Python**, with:  
+- **Streamlit** for the user interface  
+- **TensorFlow/Keras** for machine learning models  
+
+---
+
+## 🚀 How to Run the App
+
+### 1. Project Structure
 Ensure your project directory is organized as follows:
+
+
 
 image_analyzer/
 ├── app.py
