@@ -177,7 +177,7 @@ def load_models():
                     binary_model.load_weights(binary_model_path)
                     
             except Exception as e2:
-                st.error(f"Failed to load binary model weights: {str(e2)}")
+                pass
         
         # Try to load multiclass model
         try:
