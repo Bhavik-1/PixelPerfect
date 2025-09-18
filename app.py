@@ -176,8 +176,8 @@ def load_models():
                 if binary_model is not None:
                     binary_model.load_weights(binary_model_path)
                     
-            
-                
+            except Exception as e2:
+                st.error()
         
         # Try to load multiclass model
         try:
@@ -193,7 +193,8 @@ def load_models():
                 if multiclass_model is not None:
                     multiclass_model.load_weights(multiclass_model_path)
                     st.success("✅ Multiclass model weights loaded into recreated architecture")
-            
+            except Exception as e2:
+                st.error()
         
         return binary_model, multiclass_model
     
