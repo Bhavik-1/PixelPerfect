@@ -16,62 +16,70 @@ The application is built using **Python**, with:
 ### 1. Project Structure
 Ensure your project directory is organized as follows:
 
-
-
 image_analyzer/
 ├── app.py
 ├── transfer_binary_analyzer_balanced.keras
 ├── grouped_multiclass_analyzer.h5
 └── README.md
 
-app.py: The main Streamlit application file.
 
-transfer_binary_analyzer_balanced.keras: The binary classifier model (Good/Bad).
+- **`app.py`** → The main Streamlit application file  
+- **`transfer_binary_analyzer_balanced.keras`** → Binary classifier model (Good/Bad)  
+- **`grouped_multiclass_analyzer.h5`** → Multiclass classifier model (defect types)  
 
-grouped_multiclass_analyzer.h5: The multiclass classifier model (defect types).
+---
 
-2. Setup
-First, you need to install the necessary libraries. Open your terminal in the project directory and run:
+### 2. Setup
+Install the required libraries:
 
 pip install streamlit tensorflow opencv-python Pillow
 
-3. Execution
-With the dependencies installed, you can start the application with a single command:
+
+3. Run the Application
+
+Start the app with:
 
 streamlit run app.py
 
-This will open the application in your default web browser, where you can upload images for analysis.
+
+This will launch the application in your default web browser, where you can upload images for analysis.
 
 🧠 Model Architecture
-The application uses a two-stage deep learning pipeline for robust image analysis.
 
-Stage 1: Binary Classification
-This stage uses a Transfer Learning model based on VGG16 to classify images as "Good" or "Poor." The VGG16 model, pre-trained on the ImageNet dataset, acts as a powerful feature extractor. We've added custom layers on top to adapt it for our specific task.
+PixelPerfect uses a two-stage deep learning pipeline for robust image quality analysis.
 
-Input: An image uploaded by the user.
+🔹 Stage 1: Binary Classification
 
-Output: A binary prediction (Good or Poor).
+Model: Transfer Learning (VGG16 pre-trained on ImageNet)
 
-Stage 2: Multiclass Classification
-If the binary classifier detects a poor-quality image, it is passed to this second model. This is a custom Convolutional Neural Network (CNN) that specializes in identifying the type of defect.
+Input: User-uploaded image
 
-Input: A poor-quality image from Stage 1.
+Output: Good or Poor
 
-Output: The specific type of defect (e.g., Noise, Blur, Compression).
+The VGG16 backbone acts as a feature extractor, with custom layers fine-tuned for binary classification.
+
+🔹 Stage 2: Multiclass Classification
+
+Model: Custom Convolutional Neural Network (CNN)
+
+Input: Poor-quality image (from Stage 1)
+
+Output: Specific defect type
 
 📊 Defect Categories
-The multiclass model is trained to detect the following types of image defects:
 
-Blur: The image is out of focus or appears fuzzy.
+The multiclass model can detect the following image quality issues:
 
-Color Distortion: The colors in the image are unnatural or inaccurate.
+Blur → Image is out of focus or fuzzy
 
-Compression: The image has visible compression artifacts, such as square-like blocks.
+Color Distortion → Colors look unnatural or inaccurate
 
-Luminance/Contrast: The image is either too dark, too bright, or has washed-out colors.
+Compression → Visible compression artifacts (e.g., blockiness)
 
-Noise: The image appears grainy, with random specks of color or light.
+Luminance/Contrast → Too dark, too bright, or washed-out
 
-Transmission Errors: The image contains corrupted data, often appearing as streaks or missing parts.
+Noise → Grainy appearance with random specks
 
-Other: Other types of image quality issues not covered by the main categories.
+Transmission Errors → Corrupted data (streaks, missing parts)
+
+Other → Any other type of image quality degradation
