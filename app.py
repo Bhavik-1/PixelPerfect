@@ -147,36 +147,67 @@ def load_models():
         binary_model_path = "transfer_binary_analyzer_balanced.keras"
         multiclass_model_path = "grouped_multiclass_analyzer.h5"
         
-        # If model files don't exist, return None silently
-        if not os.path.exists(binary_model_path) or not os.path.exists(multiclass_model_path):
+        # Check if model files exist
+        if not os.path.exists(binary_model_path):
+            st.error(f"Binary model not found at: {binary_model_path}")
+            st.info("Please place your 'transfer_binary_analyzer.h5' model in the 'models/' directory")
+            return None, None
+            
+        if not os.path.exists(multiclass_model_path):
+            st.error(f"Multiclass model not found at: {multiclass_model_path}")
+            st.info("Please place your 'grouped_multiclass_analyzer.h5' model in the 'models/' directory")
             return None, None
         
         binary_model = None
         multiclass_model = None
         
-        # Load binary model
+        # Try to load binary model
         try:
             binary_model = load_model(binary_model_path, compile=False)
             binary_model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
-        except:
-            binary_model = recreate_binary_model()
-            if binary_model is not None:
-                binary_model.load_weights(binary_model_path)
+            
+        except Exception as e:
+           
+            
+            
+            try:
+                # Recreate model and load weights
+                binary_model = recreate_binary_model()
+                if binary_model is not None:
+                    binary_model.load_weights(binary_model_path)
+                    
+            except Exception as e2:
+                st.error(f"Failed to load binary model weights: {str(e2)}")
         
-        # Load multiclass model
+        # Try to load multiclass model
         try:
             multiclass_model = load_model(multiclass_model_path, compile=False)
             multiclass_model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
-        except:
-            multiclass_model = recreate_multiclass_model()
-            if multiclass_model is not None:
-                multiclass_model.load_weights(multiclass_model_path)
+            
+        except Exception as e:
+            
+            
+            try:
+                # Recreate model and load weights
+                multiclass_model = recreate_multiclass_model()
+                if multiclass_model is not None:
+                    multiclass_model.load_weights(multiclass_model_path)
+                    st.success("✅ Multiclass model weights loaded into recreated architecture")
+            except Exception as e2:
+                st.error(f"Failed to load multiclass model weights: {str(e2)}")
         
         return binary_model, multiclass_model
     
-    except:
+    except Exception as e:
+        st.error(f"Error loading models: {str(e)}")
+        st.error("This might be a TensorFlow/Keras version compatibility issue.")
+        st.info("""
+        **Troubleshooting Tips:**
+        1. Try installing the exact TensorFlow version used for training
+        2. Re-save models in .keras format (recommended)
+        3. Check model architecture compatibility
+        """)
         return None, None
-
 
 def preprocess_image(image, target_size=(128, 128)):
     """Preprocess image for model prediction"""
