@@ -138,89 +138,137 @@ def recreate_multiclass_model():
         st.error(f"Could not recreate multiclass model: {str(e)}")
         return None
 
-import gdown
 import os
+import gdown
+import streamlit as st
+from tensorflow.keras.models import load_model
 
-def download_from_drive():
-    # Binary model
-    binary_url = "https://drive.google.com/uc?id=FILE_ID_OF_BINARY"
+# Optional: recreate functions if needed
+def recreate_binary_model():
+    from tensorflow.keras.applications import VGG16
+    from tensorflow.keras.models import Sequential
+    from tensorflow.keras.layers import Flatten, Dense, Dropout
+    try:
+        vgg_base = VGG16(weights='imagenet', include_top=False, input_shape=(128, 128, 3))
+        for layer in vgg_base.layers:
+            layer.trainable = False
+
+        model = Sequential([
+            vgg_base,
+            Flatten(),
+            Dense(256, activation='relu'),
+            Dropout(0.5),
+            Dense(1, activation='sigmoid')
+        ])
+        model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+        return model
+    except Exception as e:
+        st.error(f"Could not recreate binary model: {e}")
+        return None
+
+def recreate_multiclass_model():
+    from tensorflow.keras.models import Sequential
+    from tensorflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Dropout
+    try:
+        model = Sequential([
+            Conv2D(32, (3, 3), activation='relu', input_shape=(128, 128, 3)),
+            MaxPooling2D((2, 2)),
+            Conv2D(64, (3, 3), activation='relu'),
+            MaxPooling2D((2, 2)),
+            Conv2D(128, (3, 3), activation='relu'),
+            MaxPooling2D((2, 2)),
+            Flatten(),
+            Dense(128, activation='relu'),
+            Dropout(0.5),
+            Dense(7, activation='softmax')
+        ])
+        model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+        return model
+    except Exception as e:
+        st.error(f"Could not recreate multiclass model: {e}")
+        return None
+
+def download_from_drive(binary_id, multiclass_id):
+    """Downloads the models from Google Drive using gdown if not already present."""
+    binary_url = f"https://drive.google.com/uc?id={binary_id}"
+    multiclass_url = f"https://drive.google.com/uc?id={multiclass_id}"
+
     binary_path = "transfer_binary_analyzer_balanced.keras"
-
-    if not os.path.exists(binary_path):
-        gdown.download(binary_url, binary_path, quiet=False)
-
-    # Multiclass model
-    multiclass_url = "https://drive.google.com/uc?id=FILE_ID_OF_MULTI"
     multiclass_path = "grouped_multiclass_analyzer.h5"
 
+    if not os.path.exists(binary_path):
+        st.info("⬇️ Downloading binary model from Google Drive...")
+        try:
+            gdown.download(binary_url, binary_path, quiet=False)
+        except Exception as e:
+            st.error(f"Failed to download binary model: {e}")
+
     if not os.path.exists(multiclass_path):
-        gdown.download(multiclass_url, multiclass_path, quiet=False)
+        st.info("⬇️ Downloading multiclass model from Google Drive...")
+        try:
+            gdown.download(multiclass_url, multiclass_path, quiet=False)
+        except Exception as e:
+            st.error(f"Failed to download multiclass model: {e}")
 
     return binary_path, multiclass_path
 
-# Model loading with caching
-from google.colab import drive
 
 @st.cache_resource
 def load_models():
-    """Load both binary (.keras) and multiclass (.h5) models directly from Google Drive"""
+    """Load both binary and multiclass models with caching, downloading if needed."""
     try:
-        # --- Mount Google Drive ---
-        drive.mount('/content/drive', force_remount=True)
-        st.info("📂 Google Drive mounted successfully!")
+        # Insert your file IDs here
+        binary_file_id = "1HKiNxqhBUq1Xd36VA7ROgfSCJGA5azQU"
+        multiclass_file_id = "1cO9UUEF4nzlprLnEm78Y9vb8P8WK1Iol"
 
-        # --- Paths to models in Drive ---
-        binary_model_path = "/content/drive/MyDrive/transfer_binary_analyzer_balanced.keras"
-        multiclass_model_path = "/content/drive/MyDrive/grouped_multiclass_analyzer.h5"
-        
-        # --- Check existence ---
-        if not os.path.exists(binary_model_path):
-            st.error(f"❌ Binary model not found at: {binary_model_path}")
-            st.info("Upload 'transfer_binary_analyzer_balanced.keras' to Google Drive → MyDrive")
-            return None, None
-            
-        if not os.path.exists(multiclass_model_path):
-            st.error(f"❌ Multiclass model not found at: {multiclass_model_path}")
-            st.info("Upload 'grouped_multiclass_analyzer.h5' to Google Drive → MyDrive")
-            return None, None
-        
+        binary_path, multiclass_path = download_from_drive(binary_file_id, multiclass_file_id)
+
         binary_model, multiclass_model = None, None
-        
-        # --- Binary model (.keras) ---
-        try:
-            binary_model = load_model(binary_model_path, compile=False)
-            binary_model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
-            st.success("✅ Binary model loaded from Google Drive (.keras)")
-        except Exception as e:
-            st.error(f"⚠️ Could not load binary model directly: {str(e)}")
+
+        # Load binary model
+        if os.path.exists(binary_path):
             try:
+                binary_model = load_model(binary_path, compile=False)
+                binary_model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+                st.success("✅ Binary model loaded (.keras format)")
+            except Exception as e:
+                st.error(f"Failed to load binary model directly: {e}")
+                # fallback
                 binary_model = recreate_binary_model()
-                if binary_model is not None:
-                    binary_model.load_weights(binary_model_path)
-                    st.success("✅ Binary model weights loaded into recreated architecture from Drive")
-            except Exception as e2:
-                st.error(f"❌ Failed to load binary model weights: {str(e2)}")
-        
-        # --- Multiclass model (.h5) ---
-        try:
-            multiclass_model = load_model(multiclass_model_path, compile=False)
-            multiclass_model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
-            st.success("✅ Multiclass model loaded from Google Drive (.h5)")
-        except Exception as e:
-            st.error(f"⚠️ Could not load multiclass model directly: {str(e)}")
+                if binary_model:
+                    try:
+                        binary_model.load_weights(binary_path)
+                        st.success("✅ Binary model loaded via weights fallback")
+                    except Exception as e2:
+                        st.error(f"Loading binary weights also failed: {e2}")
+        else:
+            st.error("Binary model file still not found after download.")
+
+        # Load multiclass model
+        if os.path.exists(multiclass_path):
             try:
+                multiclass_model = load_model(multiclass_path, compile=False)
+                multiclass_model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+                st.success("✅ Multiclass model loaded (.h5 format)")
+            except Exception as e:
+                st.error(f"Failed to load multiclass model directly: {e}")
+                # fallback
                 multiclass_model = recreate_multiclass_model()
-                if multiclass_model is not None:
-                    multiclass_model.load_weights(multiclass_model_path)
-                    st.success("✅ Multiclass model weights loaded into recreated architecture from Drive")
-            except Exception as e2:
-                st.error(f"❌ Failed to load multiclass model weights: {str(e2)}")
-        
+                if multiclass_model:
+                    try:
+                        multiclass_model.load_weights(multiclass_path)
+                        st.success("✅ Multiclass model loaded via weights fallback")
+                    except Exception as e2:
+                        st.error(f"Loading multiclass weights also failed: {e2}")
+        else:
+            st.error("Multiclass model file still not found after download.")
+
         return binary_model, multiclass_model
-    
+
     except Exception as e:
-        st.error(f"🚨 Fatal error loading models: {str(e)}")
+        st.error(f"⚠️ Fatal error in load_models: {e}")
         return None, None
+
 
 
 def preprocess_image(image, target_size=(128, 128)):
