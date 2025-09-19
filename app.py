@@ -177,7 +177,7 @@ def load_models():
                     binary_model.load_weights(binary_model_path)
                     
             except Exception as e2:
-                pass
+                st.error(f"Failed to load binary model weights: {str(e2)}")
         
         # Try to load multiclass model
         try:
@@ -194,7 +194,7 @@ def load_models():
                     multiclass_model.load_weights(multiclass_model_path)
                     st.success("✅ Multiclass model weights loaded into recreated architecture")
             except Exception as e2:
-                pass
+                st.error(f"Failed to load multiclass model weights: {str(e2)}")
         
         return binary_model, multiclass_model
     
@@ -248,7 +248,7 @@ def predict_image_quality(image, binary_model, multiclass_model):
         binary_confidence = float(binary_prediction)
         
         # Determine if image is good or bad (threshold = 0.5)
-        is_good_quality = binary_confidence >= 0.6
+        is_good_quality = binary_confidence >= 0.5
         
         if is_good_quality:
             return True, binary_confidence, None
