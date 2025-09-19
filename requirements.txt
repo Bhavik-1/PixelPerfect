@@ -3,4 +3,4 @@ tensorflow
 opencv-python-headless
 pillow
 numpy
-
+gdown
