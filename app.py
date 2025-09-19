@@ -248,7 +248,7 @@ def predict_image_quality(image, binary_model, multiclass_model):
         binary_confidence = float(binary_prediction)
         
         # Determine if image is good or bad (threshold = 0.5)
-        is_good_quality = binary_confidence >= 0.5
+        is_good_quality = binary_confidence >= 0.6
         
         if is_good_quality:
             return True, binary_confidence, None
