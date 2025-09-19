@@ -138,138 +138,76 @@ def recreate_multiclass_model():
         st.error(f"Could not recreate multiclass model: {str(e)}")
         return None
 
-import os
-import gdown
-import streamlit as st
-from tensorflow.keras.models import load_model
-
-# Optional: recreate functions if needed
-def recreate_binary_model():
-    from tensorflow.keras.applications import VGG16
-    from tensorflow.keras.models import Sequential
-    from tensorflow.keras.layers import Flatten, Dense, Dropout
-    try:
-        vgg_base = VGG16(weights='imagenet', include_top=False, input_shape=(128, 128, 3))
-        for layer in vgg_base.layers:
-            layer.trainable = False
-
-        model = Sequential([
-            vgg_base,
-            Flatten(),
-            Dense(256, activation='relu'),
-            Dropout(0.5),
-            Dense(1, activation='sigmoid')
-        ])
-        model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
-        return model
-    except Exception as e:
-        st.error(f"Could not recreate binary model: {e}")
-        return None
-
-def recreate_multiclass_model():
-    from tensorflow.keras.models import Sequential
-    from tensorflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Dropout
-    try:
-        model = Sequential([
-            Conv2D(32, (3, 3), activation='relu', input_shape=(128, 128, 3)),
-            MaxPooling2D((2, 2)),
-            Conv2D(64, (3, 3), activation='relu'),
-            MaxPooling2D((2, 2)),
-            Conv2D(128, (3, 3), activation='relu'),
-            MaxPooling2D((2, 2)),
-            Flatten(),
-            Dense(128, activation='relu'),
-            Dropout(0.5),
-            Dense(7, activation='softmax')
-        ])
-        model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
-        return model
-    except Exception as e:
-        st.error(f"Could not recreate multiclass model: {e}")
-        return None
-
-def download_from_drive(binary_id, multiclass_id):
-    """Downloads the models from Google Drive using gdown if not already present."""
-    binary_url = f"https://drive.google.com/uc?id={binary_id}"
-    multiclass_url = f"https://drive.google.com/uc?id={multiclass_id}"
-
-    binary_path = "transfer_binary_analyzer_balanced.keras"
-    multiclass_path = "grouped_multiclass_analyzer.h5"
-
-    if not os.path.exists(binary_path):
-        st.info("⬇️ Downloading binary model from Google Drive...")
-        try:
-            gdown.download(binary_url, binary_path, quiet=False)
-        except Exception as e:
-            st.error(f"Failed to download binary model: {e}")
-
-    if not os.path.exists(multiclass_path):
-        st.info("⬇️ Downloading multiclass model from Google Drive...")
-        try:
-            gdown.download(multiclass_url, multiclass_path, quiet=False)
-        except Exception as e:
-            st.error(f"Failed to download multiclass model: {e}")
-
-    return binary_path, multiclass_path
-
-
+# Model loading with caching
 @st.cache_resource
 def load_models():
-    """Load both binary and multiclass models with caching, downloading if needed."""
+    """Load both binary and multiclass models with caching"""
     try:
-        # Insert your file IDs here
-        binary_file_id = "1HKiNxqhBUq1Xd36VA7ROgfSCJGA5azQU"
-        multiclass_file_id = "1cO9UUEF4nzlprLnEm78Y9vb8P8WK1Iol"
-
-        binary_path, multiclass_path = download_from_drive(binary_file_id, multiclass_file_id)
-
-        binary_model, multiclass_model = None, None
-
-        # Load binary model
-        if os.path.exists(binary_path):
+        # Update these paths to your actual model locations
+        binary_model_path = "transfer_binary_analyzer_balanced.keras"
+        multiclass_model_path = "grouped_multiclass_analyzer.h5"
+        
+        # Check if model files exist
+        if not os.path.exists(binary_model_path):
+            st.error(f"Binary model not found at: {binary_model_path}")
+            st.info("Please place your 'transfer_binary_analyzer.h5' model in the 'models/' directory")
+            return None, None
+            
+        if not os.path.exists(multiclass_model_path):
+            st.error(f"Multiclass model not found at: {multiclass_model_path}")
+            st.info("Please place your 'grouped_multiclass_analyzer.h5' model in the 'models/' directory")
+            return None, None
+        
+        binary_model = None
+        multiclass_model = None
+        
+        # Try to load binary model
+        try:
+            binary_model = load_model(binary_model_path, compile=False)
+            binary_model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+            
+        except Exception as e:
+           
+            
+            
             try:
-                binary_model = load_model(binary_path, compile=False)
-                binary_model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
-                st.success("✅ Binary model loaded (.keras format)")
-            except Exception as e:
-                st.error(f"Failed to load binary model directly: {e}")
-                # fallback
+                # Recreate model and load weights
                 binary_model = recreate_binary_model()
-                if binary_model:
-                    try:
-                        binary_model.load_weights(binary_path)
-                        st.success("✅ Binary model loaded via weights fallback")
-                    except Exception as e2:
-                        st.error(f"Loading binary weights also failed: {e2}")
-        else:
-            st.error("Binary model file still not found after download.")
-
-        # Load multiclass model
-        if os.path.exists(multiclass_path):
+                if binary_model is not None:
+                    binary_model.load_weights(binary_model_path)
+                    
+            except Exception as e2:
+                st.error(f"Failed to load binary model weights: {str(e2)}")
+        
+        # Try to load multiclass model
+        try:
+            multiclass_model = load_model(multiclass_model_path, compile=False)
+            multiclass_model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+            
+        except Exception as e:
+            
+            
             try:
-                multiclass_model = load_model(multiclass_path, compile=False)
-                multiclass_model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
-                st.success("✅ Multiclass model loaded (.h5 format)")
-            except Exception as e:
-                st.error(f"Failed to load multiclass model directly: {e}")
-                # fallback
+                # Recreate model and load weights
                 multiclass_model = recreate_multiclass_model()
-                if multiclass_model:
-                    try:
-                        multiclass_model.load_weights(multiclass_path)
-                        st.success("✅ Multiclass model loaded via weights fallback")
-                    except Exception as e2:
-                        st.error(f"Loading multiclass weights also failed: {e2}")
-        else:
-            st.error("Multiclass model file still not found after download.")
-
+                if multiclass_model is not None:
+                    multiclass_model.load_weights(multiclass_model_path)
+                    st.success("✅ Multiclass model weights loaded into recreated architecture")
+            except Exception as e2:
+                st.error(f"Failed to load multiclass model weights: {str(e2)}")
+        
         return binary_model, multiclass_model
-
+    
     except Exception as e:
-        st.error(f"⚠️ Fatal error in load_models: {e}")
+        st.error(f"Error loading models: {str(e)}")
+        st.error("This might be a TensorFlow/Keras version compatibility issue.")
+        st.info("""
+        **Troubleshooting Tips:**
+        1. Try installing the exact TensorFlow version used for training
+        2. Re-save models in .keras format (recommended)
+        3. Check model architecture compatibility
+        """)
         return None, None
-
-
 
 def preprocess_image(image, target_size=(128, 128)):
     """Preprocess image for model prediction"""
