@@ -138,6 +138,26 @@ def recreate_multiclass_model():
         st.error(f"Could not recreate multiclass model: {str(e)}")
         return None
 
+import gdown
+import os
+
+def download_from_drive():
+    # Binary model
+    binary_url = "https://drive.google.com/uc?id=FILE_ID_OF_BINARY"
+    binary_path = "transfer_binary_analyzer_balanced.keras"
+
+    if not os.path.exists(binary_path):
+        gdown.download(binary_url, binary_path, quiet=False)
+
+    # Multiclass model
+    multiclass_url = "https://drive.google.com/uc?id=FILE_ID_OF_MULTI"
+    multiclass_path = "grouped_multiclass_analyzer.h5"
+
+    if not os.path.exists(multiclass_path):
+        gdown.download(multiclass_url, multiclass_path, quiet=False)
+
+    return binary_path, multiclass_path
+
 # Model loading with caching
 from google.colab import drive
 
