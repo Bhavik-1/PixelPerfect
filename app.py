@@ -93,15 +93,17 @@ DEFECT_TYPE_MAPPING = {
     6: 'Transmission_Error'
 }
 
+from tensorflow.keras.models import load_model
+import os
+import streamlit as st
+
+# --- Recreate functions (fallback) ---
 def recreate_binary_model():
-    """Recreate the binary model architecture to handle compatibility issues"""
     try:
-        # Recreate VGG16 base
         vgg_base = VGG16(weights='imagenet', include_top=False, input_shape=(128, 128, 3))
         for layer in vgg_base.layers:
             layer.trainable = False
         
-        # Recreate the transfer learning model
         model = Sequential([
             vgg_base,
             Flatten(),
@@ -109,7 +111,6 @@ def recreate_binary_model():
             Dropout(0.5),
             Dense(1, activation='sigmoid')
         ])
-        
         model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
         return model
     except Exception as e:
@@ -117,7 +118,6 @@ def recreate_binary_model():
         return None
 
 def recreate_multiclass_model():
-    """Recreate the multiclass model architecture"""
     try:
         model = Sequential([
             Conv2D(32, (3, 3), activation='relu', input_shape=(128, 128, 3)),
@@ -129,85 +129,63 @@ def recreate_multiclass_model():
             Flatten(),
             Dense(128, activation='relu'),
             Dropout(0.5),
-            Dense(7, activation='softmax')  # 7 classes for defect types
+            Dense(7, activation='softmax')  # 7 classes
         ])
-        
         model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
         return model
     except Exception as e:
         st.error(f"Could not recreate multiclass model: {str(e)}")
         return None
 
-# Model loading with caching
+
+# --- Main loader ---
 @st.cache_resource
 def load_models():
-    """Load both binary and multiclass models with caching"""
+    """Load both binary and multiclass models with caching + fallbacks"""
     try:
-        # Update these paths to your actual model locations
         binary_model_path = "transfer_binary_analyzer_balanced.keras"
         multiclass_model_path = "grouped_multiclass_analyzer.h5"
-        
-        # Check if model files exist
+
         if not os.path.exists(binary_model_path):
-            st.error(f"Binary model not found at: {binary_model_path}")
-            st.info("Please place your 'transfer_binary_analyzer.h5' model in the 'models/' directory")
+            st.error(f"❌ Binary model not found at: {binary_model_path}")
             return None, None
-            
+
         if not os.path.exists(multiclass_model_path):
-            st.error(f"Multiclass model not found at: {multiclass_model_path}")
-            st.info("Please place your 'grouped_multiclass_analyzer.h5' model in the 'models/' directory")
+            st.error(f"❌ Multiclass model not found at: {multiclass_model_path}")
             return None, None
-        
-        binary_model = None
-        multiclass_model = None
-        
-        # Try to load binary model
+
+        # --- Load binary model ---
         try:
-            binary_model = load_model(binary_model_path, compile=False)
-            binary_model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
-            
+            binary_model = load_model(binary_model_path)  # full model
+            st.success("✅ Binary model loaded directly")
         except Exception as e:
-           
-            
-            
-            try:
-                # Recreate model and load weights
-                binary_model = recreate_binary_model()
-                if binary_model is not None:
-                    binary_model.load_weights(binary_model_path)
-                    
-            except Exception as e2:
-                st.error(f"Failed to load binary model weights: {str(e2)}")
-        
-        # Try to load multiclass model
+            st.warning(f"Binary load_model failed: {str(e)} → trying weights")
+            binary_model = recreate_binary_model()
+            if binary_model:
+                binary_model.load_weights(binary_model_path)
+                st.success("✅ Binary model weights loaded into recreated architecture")
+            else:
+                binary_model = None
+
+        # --- Load multiclass model ---
         try:
-            multiclass_model = load_model(multiclass_model_path, compile=False)
-            multiclass_model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
-            
+            multiclass_model = load_model(multiclass_model_path)  # full model
+            st.success("✅ Multiclass model loaded directly")
         except Exception as e:
-            
-            
-            try:
-                # Recreate model and load weights
-                multiclass_model = recreate_multiclass_model()
-                if multiclass_model is not None:
-                    multiclass_model.load_weights(multiclass_model_path)
-                    st.success("✅ Multiclass model weights loaded into recreated architecture")
-            except Exception as e2:
-                st.error(f"Failed to load multiclass model weights: {str(e2)}")
-        
+            st.warning(f"Multiclass load_model failed: {str(e)} → trying weights")
+            multiclass_model = recreate_multiclass_model()
+            if multiclass_model:
+                multiclass_model.load_weights(multiclass_model_path)
+                st.success("✅ Multiclass model weights loaded into recreated architecture")
+            else:
+                multiclass_model = None
+
         return binary_model, multiclass_model
-    
+
     except Exception as e:
-        st.error(f"Error loading models: {str(e)}")
-        st.error("This might be a TensorFlow/Keras version compatibility issue.")
-        st.info("""
-        **Troubleshooting Tips:**
-        1. Try installing the exact TensorFlow version used for training
-        2. Re-save models in .keras format (recommended)
-        3. Check model architecture compatibility
-        """)
+        st.error(f"Fatal error loading models: {str(e)}")
         return None, None
+
 
 def preprocess_image(image, target_size=(128, 128)):
     """Preprocess image for model prediction"""
