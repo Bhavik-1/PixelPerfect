@@ -139,75 +139,69 @@ def recreate_multiclass_model():
         return None
 
 # Model loading with caching
+from google.colab import drive
+
 @st.cache_resource
 def load_models():
-    """Load both binary and multiclass models with caching"""
+    """Load both binary (.keras) and multiclass (.h5) models directly from Google Drive"""
     try:
-        # Update these paths to your actual model locations
-        binary_model_path = "transfer_binary_analyzer_balanced.keras"
-        multiclass_model_path = "grouped_multiclass_analyzer.h5"
+        # --- Mount Google Drive ---
+        drive.mount('/content/drive', force_remount=True)
+        st.info("📂 Google Drive mounted successfully!")
+
+        # --- Paths to models in Drive ---
+        binary_model_path = "/content/drive/MyDrive/transfer_binary_analyzer_balanced.keras"
+        multiclass_model_path = "/content/drive/MyDrive/grouped_multiclass_analyzer.h5"
         
-        # Check if model files exist
+        # --- Check existence ---
         if not os.path.exists(binary_model_path):
-            st.error(f"Binary model not found at: {binary_model_path}")
-            st.info("Please place your 'transfer_binary_analyzer.h5' model in the 'models/' directory")
+            st.error(f"❌ Binary model not found at: {binary_model_path}")
+            st.info("Upload 'transfer_binary_analyzer_balanced.keras' to Google Drive → MyDrive")
             return None, None
             
         if not os.path.exists(multiclass_model_path):
-            st.error(f"Multiclass model not found at: {multiclass_model_path}")
-            st.info("Please place your 'grouped_multiclass_analyzer.h5' model in the 'models/' directory")
+            st.error(f"❌ Multiclass model not found at: {multiclass_model_path}")
+            st.info("Upload 'grouped_multiclass_analyzer.h5' to Google Drive → MyDrive")
             return None, None
         
-        binary_model = None
-        multiclass_model = None
+        binary_model, multiclass_model = None, None
         
-        # Try to load binary model
+        # --- Binary model (.keras) ---
         try:
             binary_model = load_model(binary_model_path, compile=False)
             binary_model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
-            
+            st.success("✅ Binary model loaded from Google Drive (.keras)")
         except Exception as e:
-           
-            
-            
+            st.error(f"⚠️ Could not load binary model directly: {str(e)}")
             try:
-                # Recreate model and load weights
                 binary_model = recreate_binary_model()
                 if binary_model is not None:
                     binary_model.load_weights(binary_model_path)
-                    
+                    st.success("✅ Binary model weights loaded into recreated architecture from Drive")
             except Exception as e2:
-                st.error(f"Failed to load binary model weights: {str(e2)}")
+                st.error(f"❌ Failed to load binary model weights: {str(e2)}")
         
-        # Try to load multiclass model
+        # --- Multiclass model (.h5) ---
         try:
             multiclass_model = load_model(multiclass_model_path, compile=False)
             multiclass_model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
-            
+            st.success("✅ Multiclass model loaded from Google Drive (.h5)")
         except Exception as e:
-            
-            
+            st.error(f"⚠️ Could not load multiclass model directly: {str(e)}")
             try:
-                # Recreate model and load weights
                 multiclass_model = recreate_multiclass_model()
                 if multiclass_model is not None:
                     multiclass_model.load_weights(multiclass_model_path)
-                    st.success("✅ Multiclass model weights loaded into recreated architecture")
+                    st.success("✅ Multiclass model weights loaded into recreated architecture from Drive")
             except Exception as e2:
-                st.error(f"Failed to load multiclass model weights: {str(e2)}")
+                st.error(f"❌ Failed to load multiclass model weights: {str(e2)}")
         
         return binary_model, multiclass_model
     
     except Exception as e:
-        st.error(f"Error loading models: {str(e)}")
-        st.error("This might be a TensorFlow/Keras version compatibility issue.")
-        st.info("""
-        **Troubleshooting Tips:**
-        1. Try installing the exact TensorFlow version used for training
-        2. Re-save models in .keras format (recommended)
-        3. Check model architecture compatibility
-        """)
+        st.error(f"🚨 Fatal error loading models: {str(e)}")
         return None, None
+
 
 def preprocess_image(image, target_size=(128, 128)):
     """Preprocess image for model prediction"""
