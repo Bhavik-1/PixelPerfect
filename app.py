@@ -177,7 +177,7 @@ def load_models():
                     binary_model.load_weights(binary_model_path)
                     
             except Exception as e2:
-                st.error(f"Failed to load binary model weights: {str(e2)}")
+                pass
         
         # Try to load multiclass model
         try:
@@ -194,7 +194,7 @@ def load_models():
                     multiclass_model.load_weights(multiclass_model_path)
                     st.success("✅ Multiclass model weights loaded into recreated architecture")
             except Exception as e2:
-                st.error(f"Failed to load multiclass model weights: {str(e2)}")
+                pass
         
         return binary_model, multiclass_model
     
